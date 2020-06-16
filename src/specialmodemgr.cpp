@@ -125,9 +125,35 @@ SpecialModeMgr::SpecialModeMgr(
     std::ifstream cmdLineIfs("/proc/cmdline");
     getline(cmdLineIfs, cmdLineStr);
     static constexpr const char* specialModeStr = "special=mfg";
-    static constexpr const char* acBootStr = "resetreason=0x11";
-    if ((cmdLineStr.find(specialModeStr) != std::string::npos) &&
-        (cmdLineStr.find(acBootStr) != std::string::npos))
+    static constexpr const char* resetReasonStr = "resetreason";
+    static constexpr const uint32_t acBootFlag = 0x1;
+    static constexpr const char argDelim = ' ';
+    static constexpr const char paramDelim = '=';
+    bool enterSpecialMode = false;
+    if (cmdLineStr.find(specialModeStr) != std::string::npos)
+    {
+        size_t pos = cmdLineStr.find(resetReasonStr);
+        if (pos != std::string::npos)
+        {
+            std::string argStr =
+                cmdLineStr.substr(pos, cmdLineStr.find(argDelim, pos) - pos);
+            std::string paramStr = argStr.substr(argStr.find(paramDelim) + 1);
+            try
+            {
+                uint32_t reasonVal = std::stoul(paramStr, 0, 16);
+                if (reasonVal & acBootFlag)
+                {
+                    enterSpecialMode = true;
+                }
+            }
+            catch (const std::invalid_argument& ia)
+            {
+                // Do nothing. Keep the enterSpecialMode as false.
+            }
+        }
+    }
+
+    if (enterSpecialMode)
     {
         intfAddMatchRule = std::make_unique<sdbusplus::bus::match::match>(
             static_cast<sdbusplus::bus::bus&>(*conn),
