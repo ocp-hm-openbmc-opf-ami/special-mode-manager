@@ -33,6 +33,8 @@ static constexpr const char* specialModeIntf =
     "xyz.openbmc_project.Security.SpecialMode";
 static constexpr const char* specialModePath =
     "/xyz/openbmc_project/security/special_mode";
+static constexpr const char* specialModeManagerIntf =
+    "xyz.openbmc_project.Security.SpecialMode.Manager";
 static constexpr const char* provisioningMode =
     "xyz.openbmc_project.Control.Security.RestrictionMode.Modes.Provisioning";
 static constexpr const char* restrictionModeService =
@@ -368,7 +370,8 @@ int main()
     auto conn = std::make_shared<sdbusplus::asio::connection>(io);
     conn->request_name(specialModeMgrService);
     sdbusplus::asio::object_server server(conn, true);
-    auto mgrIntf = server.add_interface(specialModePath, "");
+    auto mgrIntf =
+        server.add_interface(specialModePath, specialModeManagerIntf);
     mgrIntf->initialize();
     server.add_manager(specialModePath);
 
