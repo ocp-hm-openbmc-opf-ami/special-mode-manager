@@ -300,6 +300,10 @@ void SpecialModeMgr::addSpecialModeProperty()
                 output.close();
                 specialMode = mode;
                 propertyValue = req;
+                sd_journal_send(
+                    "MESSAGE=%s", "Validation Unsecure mode - Entered",
+                    "PRIORITY=%i", LOG_CRIT, "REDFISH_MESSAGE_ID=%s",
+                    "OpenBMC.0.1.ValidationUnsecureModeEntered", NULL);
                 return 1;
             }
 #endif
@@ -308,6 +312,14 @@ void SpecialModeMgr::addSpecialModeProperty()
                 specialMode != mode)
             {
 #ifdef BMC_VALIDATION_UNSECURE_FEATURE
+                if (specialMode ==
+                    secCtrl::SpecialMode::Modes::ValidationUnsecure)
+                {
+                    sd_journal_send(
+                        "MESSAGE=%s", "Validation Unsecure mode - Exited",
+                        "PRIORITY=%i", LOG_INFO, "REDFISH_MESSAGE_ID=%s",
+                        "OpenBMC.0.1.ValidationUnsecureModeExited", NULL);
+                }
                 std::remove(validationModeFile.c_str());
 #endif
                 specialMode = mode;
