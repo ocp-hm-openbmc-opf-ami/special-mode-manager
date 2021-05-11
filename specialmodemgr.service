@@ -2,6 +2,8 @@
 Description=Special mode manager
 Wants=mapper-wait@-xyz-openbmc_project-control-security-restriction_mode.service
 After=mapper-wait@-xyz-openbmc_project-control-security-restriction_mode.service
+Wants=rsyslog.service
+After=rsyslog.service
 
 [Service]
 Restart=always
