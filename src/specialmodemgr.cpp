@@ -393,4 +393,6 @@ int main()
 
     SpecialModeMgr specialModeMgr(io, server, conn);
     io.run();
+
+    return 0;
 }
