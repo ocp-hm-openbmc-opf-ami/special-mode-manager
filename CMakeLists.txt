@@ -44,6 +44,7 @@ target_link_libraries(${PROJECT_NAME} ${SDBUSPLUSPLUS_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${DBUSINTERFACE_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} phosphor_logging)
+target_link_libraries(${PROJECT_NAME} gpiodcxx)
 
 link_directories(${EXTERNAL_INSTALL_LOCATION}/lib)
 

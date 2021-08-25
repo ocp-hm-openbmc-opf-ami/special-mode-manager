@@ -43,6 +43,10 @@ class SpecialModeMgr
     void addSpecialModeProperty();
     void checkAndAddSpecialModeProperty(const std::string& provMode);
     void updateTimer(int countInSeconds);
+#ifdef BMC_VALIDATION_UNSECURE_FEATURE
+    void evaluateValidationJumperMode();
+#endif
+    bool valJumperMode = false;
 
   public:
     void setSpecialModeValue(

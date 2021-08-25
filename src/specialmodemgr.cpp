@@ -18,6 +18,7 @@
 #include "file.hpp"
 
 #include <sys/sysinfo.h>
+#include <gpiod.hpp>
 
 #include <pwd.h>
 #include <shadow.h>
@@ -106,9 +107,10 @@ SpecialModeMgr::SpecialModeMgr(
     timer(std::make_unique<boost::asio::steady_timer>(io)),
     specialMode(secCtrl::SpecialMode::Modes::None)
 {
-
 #ifdef BMC_VALIDATION_UNSECURE_FEATURE
-    if (std::filesystem::exists(validationModeFile))
+    evaluateValidationJumperMode();
+
+    if (std::filesystem::exists(validationModeFile) || valJumperMode)
     {
         specialMode = secCtrl::SpecialMode::Modes::ValidationUnsecure;
         sd_journal_send("MESSAGE=%s", "ValidationUnsecure mode - Entered",
@@ -343,6 +345,8 @@ void SpecialModeMgr::addSpecialModeProperty()
         }
         return;
     });
+
+    iface->register_property("ValidationJumperMode", valJumperMode);
     iface->initialize(true);
 }
 
@@ -376,6 +380,35 @@ void SpecialModeMgr::updateTimer(int countInSeconds)
                         "OpenBMC.0.1.ManufacturingModeExited", NULL);
     });
 }
+
+#ifdef BMC_VALIDATION_UNSECURE_FEATURE
+void SpecialModeMgr::evaluateValidationJumperMode()
+{
+    gpiod::line valJumperGpio = gpiod::find_line("FM_BMC_VAL_EN");
+    if (!valJumperGpio) // jumper not supported on this platform
+    {
+        phosphor::logging::log<phosphor::logging::level::INFO>(
+            "Validation mode jumper is not supported on this platform!");
+        return;
+    }
+    try
+    {
+        valJumperGpio.request(
+            {"special-mode-mgr", gpiod::line_request::DIRECTION_INPUT});
+        valJumperMode = (valJumperGpio.get_value() > 0) ? true : false;
+    }
+    catch (const std::exception& e)
+    {
+        phosphor::logging::log<phosphor::logging::level::ERR>(
+            "Unable to access GPIO.",
+            phosphor::logging::entry("GPIO_NAME=%s",
+                                     valJumperGpio.name().c_str()),
+            phosphor::logging::entry("EX=%s", e.what()));
+
+        return;
+    }
+}
+#endif
 
 } // namespace specialMode
 
