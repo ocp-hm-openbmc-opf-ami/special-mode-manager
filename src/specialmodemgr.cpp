@@ -23,8 +23,10 @@
 #include <pwd.h>
 #include <shadow.h>
 #include <fstream>
-#include <phosphor-logging/log.hpp>
 #include <string>
+#include <phosphor-logging/lg2.hpp>
+
+using std::operator""s;
 
 namespace specialMode
 {
@@ -66,8 +68,7 @@ static void checkAndConfigureSpecialUser()
                             sbuffer.max_size(), &resultPtr);
     if (status || (&spwd != resultPtr))
     {
-        phosphor::logging::log<phosphor::logging::level::ERR>(
-            "Error in querying shadow entry for special user");
+        lg2::error("Error in querying shadow entry for special user");
     }
     // Password will be single character '!' or '*' for disabled login
     if ((resultPtr->sp_pwdp[0] == '!' || resultPtr->sp_pwdp[0] == '*') &&
@@ -76,8 +77,7 @@ static void checkAndConfigureSpecialUser()
         File passwdFd("/etc/shadow", "r+");
         if ((passwdFd)() == nullptr)
         {
-            phosphor::logging::log<phosphor::logging::level::ERR>(
-                "Error in opening shadow file");
+            lg2::error("Error in opening shadow file");
             return;
         }
         // Mark the special user password as null, to allow
@@ -87,13 +87,12 @@ static void checkAndConfigureSpecialUser()
         // force user to update new password on first login.
         resultPtr->sp_lstchg = 0;
         putspent(resultPtr, (passwdFd)());
-        phosphor::logging::log<phosphor::logging::level::INFO>(
-            "Configured special user sucessfully");
+
+        lg2::info("Configured special user sucessfully");
     }
     else
     {
-        phosphor::logging::log<phosphor::logging::level::DEBUG>(
-            "Skip configuring special user as it is already enabled");
+        lg2::debug("Skip configuring special user as it is already enabled");
     }
 }
 
@@ -113,9 +112,8 @@ SpecialModeMgr::SpecialModeMgr(
     if (std::filesystem::exists(validationModeFile) || valJumperMode)
     {
         specialMode = secCtrl::SpecialMode::Modes::ValidationUnsecure;
-        sd_journal_send("MESSAGE=%s", "ValidationUnsecure mode - Entered",
-                        "PRIORITY=%i", LOG_CRIT, "REDFISH_MESSAGE_ID=%s",
-                        "OpenBMC.0.1.ManufacturingModeEntered", NULL);
+        lg2::critical("ValidationUnsecure mode - Entered", "REDFISH_MESSAGE_ID",
+                      "OpenBMC.0.1.ManufacturingModeEntered"s);
 
         addSpecialModeProperty();
         return;
@@ -181,9 +179,7 @@ SpecialModeMgr::SpecialModeMgr(
                 }
                 catch (const std::out_of_range& e)
                 {
-                    phosphor::logging::log<phosphor::logging::level::ERR>(
-                        "Error in finding RestrictionMode property");
-
+                    lg2::error("Error in finding RestrictionMode property");
                     return;
                 }
                 checkAndAddSpecialModeProperty(std::get<std::string>(mode));
@@ -210,16 +206,13 @@ SpecialModeMgr::SpecialModeMgr(
 
                 catch (const std::out_of_range& e)
                 {
-                    phosphor::logging::log<phosphor::logging::level::ERR>(
-                        "Error in finding RestrictionMode property");
-
+                    lg2::error("Error in finding RestrictionMode property");
                     return;
                 }
 
                 if (std::get<std::string>(mode) != provisioningMode)
                 {
-                    phosphor::logging::log<phosphor::logging::level::INFO>(
-                        "Mode is not provisioning");
+                    lg2::info("Mode is not provisioning");
                     setSpecialModeValue(secCtrl::SpecialMode::Modes::None);
                 }
             });
@@ -228,7 +221,7 @@ SpecialModeMgr::SpecialModeMgr(
             [this](boost::system::error_code ec, const VariantValue& mode) {
                 if (ec)
                 {
-                    phosphor::logging::log<phosphor::logging::level::INFO>(
+                    lg2::info(
                         "Error in reading restrictionMode property, probably "
                         "service not up");
                     return;
@@ -262,9 +255,7 @@ void SpecialModeMgr::checkAndAddSpecialModeProperty(const std::string& provMode)
     int ret = sysinfo(&sysInfo);
     if (ret != 0)
     {
-        phosphor::logging::log<phosphor::logging::level::INFO>(
-            "ERROR in getting sysinfo",
-            phosphor::logging::entry("RET = %d", ret));
+        lg2::info("ERROR in getting sysinfo", "RET", ret);
         addSpecialModeProperty();
         return;
     }
@@ -273,9 +264,8 @@ void SpecialModeMgr::checkAndAddSpecialModeProperty(const std::string& provMode)
     {
         specialMode = secCtrl::SpecialMode::Modes::Manufacturing;
         specialModeLockoutSeconds = mtmAllowedTime - sysInfo.uptime;
-        sd_journal_send("MESSAGE=%s", "Manufacturing mode - Entered",
-                        "PRIORITY=%i", LOG_INFO, "REDFISH_MESSAGE_ID=%s",
-                        "OpenBMC.0.1.ManufacturingModeEntered", NULL);
+        lg2::info("Manufacturing mode - Entered", "REDFISH_MESSAGE_ID",
+                  "OpenBMC.0.1.ManufacturingModeEntered"s);
 #ifdef BMC_VALIDATION_UNSECURE_FEATURE
         checkAndConfigureSpecialUser();
 #endif
@@ -306,10 +296,9 @@ void SpecialModeMgr::addSpecialModeProperty()
                 output.close();
                 specialMode = mode;
                 propertyValue = req;
-                sd_journal_send(
-                    "MESSAGE=%s", "ValidationUnsecure mode - Entered",
-                    "PRIORITY=%i", LOG_CRIT, "REDFISH_MESSAGE_ID=%s",
-                    "OpenBMC.0.1.ManufacturingModeEntered", NULL);
+                lg2::critical("ValidationUnsecure mode - Entered",
+                              "REDFISH_MESSAGE_ID",
+                              "OpenBMC.0.1.ManufacturingModeEntered"s);
                 return 1;
             }
 #endif
@@ -321,10 +310,9 @@ void SpecialModeMgr::addSpecialModeProperty()
                 if (specialMode ==
                     secCtrl::SpecialMode::Modes::ValidationUnsecure)
                 {
-                    sd_journal_send(
-                        "MESSAGE=%s", "ValidationUnsecure mode - Exited",
-                        "PRIORITY=%i", LOG_INFO, "REDFISH_MESSAGE_ID=%s",
-                        "OpenBMC.0.1.ManufacturingModeExited", NULL);
+                    lg2::info("ValidationUnsecure mode - Exited",
+                              "REDFISH_MESSAGE_ID",
+                              "OpenBMC.0.1.ManufacturingModeExited"s);
                 }
                 std::remove(validationModeFile.c_str());
 #endif
@@ -361,8 +349,7 @@ void SpecialModeMgr::updateTimer(int countInSeconds)
         }
         else if (ec)
         {
-            phosphor::logging::log<phosphor::logging::level::ERR>(
-                "Error in special mode timer");
+            lg2::error("Error in special mode timer");
             return;
         }
 #ifdef BMC_VALIDATION_UNSECURE_FEATURE
@@ -375,9 +362,8 @@ void SpecialModeMgr::updateTimer(int countInSeconds)
         iface->set_property(
             strSpecialMode,
             secCtrl::convertForMessage(secCtrl::SpecialMode::Modes::None));
-        sd_journal_send("MESSAGE=%s", "Manufacturing mode - Exited",
-                        "PRIORITY=%i", LOG_INFO, "REDFISH_MESSAGE_ID=%s",
-                        "OpenBMC.0.1.ManufacturingModeExited", NULL);
+        lg2::info("Manufacturing mode - Exited", "REDFISH_MESSAGE_ID",
+                  "OpenBMC.0.1.ManufacturingModeExited"s);
     });
 }
 
@@ -387,8 +373,7 @@ void SpecialModeMgr::evaluateValidationJumperMode()
     gpiod::line valJumperGpio = gpiod::find_line("FM_BMC_VAL_EN");
     if (!valJumperGpio) // jumper not supported on this platform
     {
-        phosphor::logging::log<phosphor::logging::level::INFO>(
-            "Validation mode jumper is not supported on this platform!");
+        lg2::info("Validation mode jumper is not supported on this platform!");
         return;
     }
     try
@@ -399,11 +384,8 @@ void SpecialModeMgr::evaluateValidationJumperMode()
     }
     catch (const std::exception& e)
     {
-        phosphor::logging::log<phosphor::logging::level::ERR>(
-            "Unable to access GPIO.",
-            phosphor::logging::entry("GPIO_NAME=%s",
-                                     valJumperGpio.name().c_str()),
-            phosphor::logging::entry("EX=%s", e.what()));
+        lg2::error("Unable to access GPIO.", "GPIO_NAME", valJumperGpio.name(),
+                   "EX", std::string(e.what()));
 
         return;
     }
