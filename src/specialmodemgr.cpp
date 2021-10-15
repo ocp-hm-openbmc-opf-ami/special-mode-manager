@@ -15,16 +15,15 @@
 */
 
 #include "specialmodemgr.hpp"
-#include "file.hpp"
 
 #include <sys/sysinfo.h>
 #include <gpiod.hpp>
 
-#include <pwd.h>
 #include <shadow.h>
 #include <fstream>
 #include <string>
 #include <phosphor-logging/lg2.hpp>
+#include <boost/process.hpp>
 
 using std::operator""s;
 
@@ -56,6 +55,24 @@ namespace secCtrl = sdbusplus::xyz::openbmc_project::Control::Security::server;
 
 #ifdef BMC_VALIDATION_UNSECURE_FEATURE
 
+static bool executeCmd(const char* cmd)
+{
+    boost::process::child execProg(cmd);
+    execProg.wait();
+    int status = execProg.exit_code();
+    if (status != 0)
+    {
+        lg2::error("Subprocess failed", "STATUS", status);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Check if password has ever been set for root. If so, leave it untouched
+ * (although it may actually be locked). If not, make the password null so that
+ * it can be set on next login attempt.
+ */
 static void checkAndConfigureSpecialUser()
 {
     std::array<char, 4096> sbuffer{};
@@ -64,36 +81,28 @@ static void checkAndConfigureSpecialUser()
     constexpr const char* specialUser = "root";
 
     // Query shadow entry for special user.
+    // Use the library API since there is no utility that provides the hashed
+    // password. Only other alternative is manual file IO on /etc/shadow.
     int status = getspnam_r(specialUser, &spwd, sbuffer.data(),
                             sbuffer.max_size(), &resultPtr);
     if (status || (&spwd != resultPtr))
     {
         lg2::error("Error in querying shadow entry for special user");
+        return;
     }
-    // Password will be single character '!' or '*' for disabled login
-    if ((resultPtr->sp_pwdp[0] == '!' || resultPtr->sp_pwdp[0] == '*') &&
-        resultPtr->sp_pwdp[1] == 0)
-    {
-        File passwdFd("/etc/shadow", "r+");
-        if ((passwdFd)() == nullptr)
-        {
-            lg2::error("Error in opening shadow file");
-            return;
-        }
-        // Mark the special user password as null, to allow
-        // nullok login.
-        resultPtr->sp_pwdp[0] = 0;
-        // Mark the special user password as expired. This will
-        // force user to update new password on first login.
-        resultPtr->sp_lstchg = 0;
-        putspent(resultPtr, (passwdFd)());
-
-        lg2::info("Configured special user sucessfully");
-    }
-    else
+    std::string curPwHash(resultPtr->sp_pwdp);
+    if (curPwHash != "!" && curPwHash != "*")
     {
         lg2::debug("Skip configuring special user as it is already enabled");
+        return;
     }
+
+    if (!executeCmd("/usr/bin/passwd --delete --expire root"))
+    {
+        lg2::error("Failed to delete root password");
+        return;
+    }
+    lg2::info("Configured special user sucessfully");
 }
 
 #endif
