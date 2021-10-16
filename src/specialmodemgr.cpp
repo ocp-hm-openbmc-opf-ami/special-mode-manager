@@ -16,6 +16,7 @@
 
 #include "specialmodemgr.hpp"
 
+#include <filesystem>
 #include <sys/sysinfo.h>
 #include <gpiod.hpp>
 
@@ -69,11 +70,25 @@ static bool executeCmd(const char* cmd)
 }
 
 /**
- * Check if password has ever been set for root. If so, leave it untouched
- * (although it may actually be locked). If not, make the password null so that
- * it can be set on next login attempt.
+ * Enable or disable the root user login and administrative group privileges. If
+ * user is already in the desired state, take no action and return false.
+ *
+ * User is considered enabled if their shadow password hash contains any data.
+ * This would happen if the user was already configured through any means (e.g.
+ * IPMI command).
+ *
+ * To enable the user, this function will make the password hash null and force
+ * password expiration so that the user can login at the console without a
+ * password but will be forced to set a new one at that time.
+ *
+ * To disable the user, this function will lock and delete the password so that
+ * the password hash goes back to the original state, and appears to have never
+ * been set.
+ *
+ * @return Whether we successfully modified the root user. False if modification
+ *         was not necessary OR if modification failed.
  */
-static void checkAndConfigureSpecialUser()
+static bool enableSpecialUser(bool enable)
 {
     std::array<char, 4096> sbuffer{};
     struct spwd spwd;
@@ -88,21 +103,65 @@ static void checkAndConfigureSpecialUser()
     if (status || (&spwd != resultPtr))
     {
         lg2::error("Error in querying shadow entry for special user");
-        return;
+        return false;
     }
     std::string curPwHash(resultPtr->sp_pwdp);
-    if (curPwHash != "!" && curPwHash != "*")
+    bool userEnabled = (curPwHash != "!" && curPwHash != "*");
+    if (enable == userEnabled)
     {
-        lg2::debug("Skip configuring special user as it is already enabled");
-        return;
+        lg2::debug("Skip configuring special user as it is already done");
+        return false;
     }
 
-    if (!executeCmd("/usr/bin/passwd --delete --expire root"))
+    const char *passwordCmd, *groupCmd;
+    if (enable)
     {
-        lg2::error("Failed to delete root password");
-        return;
+        // Sets the password hash to "" and set date of last password change to
+        // 0 so that user can log in but is forced to set a password.
+        // see shadow(5) for more details
+        passwordCmd = "/usr/bin/passwd --delete --expire root";
+        groupCmd = "/usr/sbin/groupmems -g priv-admin -a root";
     }
+    else
+    {
+        // Sets the password hash to "!" so that the account is locked, but can
+        // be unlocked by entering a special mode again in the future.
+        passwordCmd = "/usr/bin/passwd --delete --lock root";
+        groupCmd = "/usr/sbin/groupmems -g priv-admin -d root";
+    }
+
+    if (!executeCmd(passwordCmd))
+    {
+        lg2::error("Failed to modify root password");
+        return false;
+    }
+
+    if (!executeCmd(groupCmd))
+    {
+        lg2::error("Failed to modify root administrative privileges");
+        return false;
+    }
+
     lg2::info("Configured special user sucessfully");
+    return true;
+}
+
+static void
+    startSSHServer(const std::shared_ptr<sdbusplus::asio::connection>& conn)
+{
+    auto startUnit = conn->new_method_call(
+        "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+        "org.freedesktop.systemd1.Manager", "StartUnit");
+    startUnit.append("dropbear.socket", "replace");
+    try
+    {
+        conn->call(startUnit);
+        lg2::info("Started SSH server");
+    }
+    catch (const sdbusplus::exception::SdBusError&)
+    {
+        lg2::error("Failed to start SSH server");
+    }
 }
 
 #endif
@@ -117,14 +176,51 @@ SpecialModeMgr::SpecialModeMgr(
 {
 #ifdef BMC_VALIDATION_UNSECURE_FEATURE
     evaluateValidationJumperMode();
+    bool valModeFileExists = std::filesystem::exists(validationModeFile);
+    // Only valJumper triggers extra actions of enabling root user and SSH
+    // server.
+    if (valJumperMode)
+    {
+        if (enableSpecialUser(true))
+        {
+            // If we succeeded in enabling root access based on the jumper mode,
+            // record that it's only temporary and should be undone when the
+            // jumper is removed. There is a chance of insecure race condition
+            // here if power is lost before file is persisted to flash (so the
+            // actions won't be undone when the jumper is removed). But there is
+            // no foolproof way to protect against this due to different ways
+            // RWFS may be implemented. Just do this best effort:
+            std::ofstream(valJumperFile).close();
+        }
+        // On repeat boots with jumper asserted, enableSpecialUser will return
+        // false because it's already enabled, but we still want to start SSH
+        // server.
+        startSSHServer(conn);
+    }
+    else if (std::filesystem::exists(valJumperFile))
+    {
+        if (enableSpecialUser(false))
+        {
+            // Only if we successfully disabled the root user, delete the flag.
+            std::filesystem::remove(valJumperFile);
+        }
+        // SSH is "disabled" by virtue of it not being manually started. But it
+        // may actually be running still if user enabled the service while
+        // jumper was asserted.
+    }
 
-    if (std::filesystem::exists(validationModeFile) || valJumperMode)
+    // But presence of either valModeFile or valJumper puts us into
+    // ValidationUnsecure mode.
+    if (valModeFileExists || valJumperMode)
     {
         specialMode = secCtrl::SpecialMode::Modes::ValidationUnsecure;
         lg2::critical("ValidationUnsecure mode - Entered", "REDFISH_MESSAGE_ID",
                       "OpenBMC.0.1.ManufacturingModeEntered"s);
 
         addSpecialModeProperty();
+
+        // Don't bother checking for manufacturing mode if we've already entered
+        // ValidationUnsecure mode.
         return;
     }
 #endif
@@ -276,7 +372,7 @@ void SpecialModeMgr::checkAndAddSpecialModeProperty(const std::string& provMode)
         lg2::info("Manufacturing mode - Entered", "REDFISH_MESSAGE_ID",
                   "OpenBMC.0.1.ManufacturingModeEntered"s);
 #ifdef BMC_VALIDATION_UNSECURE_FEATURE
-        checkAndConfigureSpecialUser();
+        enableSpecialUser(true);
 #endif
     }
     addSpecialModeProperty();
@@ -323,7 +419,7 @@ void SpecialModeMgr::addSpecialModeProperty()
                               "REDFISH_MESSAGE_ID",
                               "OpenBMC.0.1.ManufacturingModeExited"s);
                 }
-                std::remove(validationModeFile.c_str());
+                std::filesystem::remove(validationModeFile);
 #endif
                 specialMode = mode;
                 propertyValue = req;

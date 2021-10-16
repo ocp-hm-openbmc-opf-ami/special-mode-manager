@@ -45,3 +45,19 @@ achieved by exposing `SpecialMode` property under
 the property is in `ValidationUnsecure` mode, then ManufacturingMode is enabled
 permanently, till the property is updated or reset to defaults has been
 performed.
+
+### Enabling via Baseboard Jumper
+`ValidationUnsecure` mode can also be controlled by use of a platform jumper. If
+a GPIO with name of `FM_BMC_VAL_EN` exists and is asserted at BMC boot time,
+then `ValidationUnsecure` mode is entered automatically. Additionally, asserting
+the jumper also performs the following actions (which are not done when simply
+setting the D-Bus property):
+
+1. Enables the root user with priv-admin group membership
+2. Starts the Dropbear SSH server
+
+Upon first entry you will be prompted to create a password. SSH access via the
+root user account is available after the password is assigned. The next time the
+BMC is booted with the jumper deasserted, the root user configuration will be
+restored to its original disabled state, and the SSH server will no longer be
+started.

@@ -39,7 +39,19 @@ class SpecialModeMgr
     std::unique_ptr<boost::asio::steady_timer> timer = nullptr;
     std::unique_ptr<sdbusplus::bus::match::match> intfAddMatchRule = nullptr;
     std::unique_ptr<sdbusplus::bus::match::match> propUpdMatchRule = nullptr;
-    std::filesystem::path validationModeFile = "/var/validation_unsecure_mode";
+    /**
+     * Path to file (consumed by this service at startup) that signals
+     * validation mode should be entered.
+     */
+    const std::filesystem::path validationModeFile =
+        "/var/validation_unsecure_mode";
+    /**
+     * Path to file (created and consumed by the service) indicating that
+     * special features were enabled due to jumper assertion and should be
+     * disabled if jumper is no longer set.
+     */
+    const std::filesystem::path valJumperFile =
+        "/var/val_jumper_assert_cleanup_required";
     void addSpecialModeProperty();
     void checkAndAddSpecialModeProperty(const std::string& provMode);
     void updateTimer(int countInSeconds);
