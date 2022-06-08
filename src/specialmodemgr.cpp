@@ -19,6 +19,7 @@
 #include <filesystem>
 #include <sys/sysinfo.h>
 #include <gpiod.hpp>
+#include <grp.h>
 
 #include <shadow.h>
 #include <fstream>
@@ -107,13 +108,29 @@ static bool enableSpecialUser(bool enable)
     }
     std::string curPwHash(resultPtr->sp_pwdp);
     bool userEnabled = (curPwHash != "!" && curPwHash != "*");
-    if (enable == userEnabled)
+
+    // Check if special user is alread in admin group.
+    bool inGroup = false;
+    while (group* groupEntry = getgrent())
     {
-        lg2::debug("Skip configuring special user as it is already done");
-        return false;
+        if (groupEntry->gr_name == std::string_view("priv-admin"))
+        {
+            for (int i = 0; groupEntry->gr_mem[i] != nullptr; ++i)
+            {
+                const char* member = groupEntry->gr_mem[i];
+                if (member == std::string_view(specialUser))
+                {
+                    inGroup = true;
+                    break;
+                }
+            }
+            break;
+        }
     }
 
-    const char *passwordCmd, *groupCmd;
+    const char *passwordCmd = nullptr, *groupCmd = nullptr;
+    const bool changePassword = enable != userEnabled;
+    const bool changeGroup = enable != inGroup;
     if (enable)
     {
         // Sets the password hash to "" and set date of last password change to
@@ -130,13 +147,13 @@ static bool enableSpecialUser(bool enable)
         groupCmd = "/usr/sbin/groupmems -g priv-admin -d root";
     }
 
-    if (!executeCmd(passwordCmd))
+    if (changePassword && !executeCmd(passwordCmd))
     {
         lg2::error("Failed to modify root password");
         return false;
     }
 
-    if (!executeCmd(groupCmd))
+    if (changeGroup && !executeCmd(groupCmd))
     {
         lg2::error("Failed to modify root administrative privileges");
         return false;
@@ -181,17 +198,8 @@ SpecialModeMgr::SpecialModeMgr(
     // server.
     if (valJumperMode)
     {
-        if (enableSpecialUser(true))
-        {
-            // If we succeeded in enabling root access based on the jumper mode,
-            // record that it's only temporary and should be undone when the
-            // jumper is removed. There is a chance of insecure race condition
-            // here if power is lost before file is persisted to flash (so the
-            // actions won't be undone when the jumper is removed). But there is
-            // no foolproof way to protect against this due to different ways
-            // RWFS may be implemented. Just do this best effort:
-            std::ofstream(valJumperFile).close();
-        }
+        std::ofstream(valJumperFile).close();
+        enableSpecialUser(true);
         // On repeat boots with jumper asserted, enableSpecialUser will return
         // false because it's already enabled, but we still want to start SSH
         // server.
