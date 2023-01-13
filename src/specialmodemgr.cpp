@@ -412,7 +412,7 @@ void SpecialModeMgr::addSpecialModeProperty()
                 lg2::critical("ValidationUnsecure mode - Entered",
                               "REDFISH_MESSAGE_ID",
                               "OpenBMC.0.1.ManufacturingModeEntered"s);
-                return 1;
+                return true;
             }
 #endif
 
@@ -431,9 +431,9 @@ void SpecialModeMgr::addSpecialModeProperty()
 #endif
                 specialMode = mode;
                 propertyValue = req;
-                return 1;
+                return true;
             }
-            return 0;
+            return true;
         },
         // Override get
         [this](const std::string& mode) {
