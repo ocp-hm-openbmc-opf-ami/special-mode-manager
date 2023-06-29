@@ -60,6 +60,8 @@ target_compile_definitions(${PROJECT_NAME}
 
 set(SERVICE_FILES ${PROJECT_SOURCE_DIR}/specialmodemgr.service)
 
+pkg_get_variable(SYSTEMD_SYSTEM_UNIT_DIR systemd systemdsystemunitdir)
+
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
-install(FILES ${SERVICE_FILES} DESTINATION /lib/systemd/system/)
+install(FILES ${SERVICE_FILES} DESTINATION "${SYSTEMD_SYSTEM_UNIT_DIR}")
 
