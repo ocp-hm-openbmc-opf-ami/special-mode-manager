@@ -184,7 +184,7 @@ static void
 #endif
 
 SpecialModeMgr::SpecialModeMgr(
-    boost::asio::io_service& io_, sdbusplus::asio::object_server& srv_,
+    boost::asio::io_context& io_, sdbusplus::asio::object_server& srv_,
     std::shared_ptr<sdbusplus::asio::connection>& conn_) :
     io(io_),
     server(srv_), conn(conn_),
@@ -510,7 +510,7 @@ void SpecialModeMgr::evaluateValidationJumperMode()
 int main()
 {
     using namespace specialMode;
-    boost::asio::io_service io;
+    boost::asio::io_context io;
     auto conn = std::make_shared<sdbusplus::asio::connection>(io);
     conn->request_name(specialModeMgrService);
     sdbusplus::asio::object_server server(conn, true);

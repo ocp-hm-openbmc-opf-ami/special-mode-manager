@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 
 #include <sdbusplus/asio/object_server.hpp>
@@ -30,7 +30,7 @@ static constexpr const char* strSpecialMode = "SpecialMode";
 
 class SpecialModeMgr
 {
-    boost::asio::io_service& io;
+    boost::asio::io_context& io;
     sdbusplus::asio::object_server& server;
     std::shared_ptr<sdbusplus::asio::connection> conn;
     std::shared_ptr<sdbusplus::asio::dbus_interface> iface;
@@ -72,7 +72,7 @@ class SpecialModeMgr
                                     Security::server::convertForMessage(value));
         }
     }
-    SpecialModeMgr(boost::asio::io_service& io,
+    SpecialModeMgr(boost::asio::io_context& io,
                    sdbusplus::asio::object_server& srv,
                    std::shared_ptr<sdbusplus::asio::connection>& conn);
 };
