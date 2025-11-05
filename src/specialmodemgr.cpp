@@ -25,7 +25,7 @@
 #include <fstream>
 #include <string>
 #include <phosphor-logging/lg2.hpp>
-#include <boost/process.hpp>
+#include <boost/process/v1/child.hpp>
 
 using std::operator""s;
 
@@ -59,7 +59,7 @@ namespace secCtrl = sdbusplus::xyz::openbmc_project::Control::Security::server;
 
 static bool executeCmd(const char* cmd)
 {
-    boost::process::child execProg(cmd);
+    boost::process::v1::child execProg(cmd);
     execProg.wait();
     int status = execProg.exit_code();
     if (status != 0)
