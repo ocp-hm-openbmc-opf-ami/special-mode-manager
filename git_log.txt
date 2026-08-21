@@ -1,0 +1,804 @@
+commit 2447b544efc8b235a3f4005a40be15ca0a5248d8
+Author: Jason M. Bills <jason.m.bills@intel.com>
+Date:   Wed Nov 5 07:37:18 2025 -0700
+
+    Use boost::process::v1 (#10)
+    
+    To support the latest boost::process, change the header and calls to v1.
+    
+    Signed-off-by: Jason M. Bills <jason.m.bills@intel.com>
+
+commit df2fa2e3956040043c3af383872de7b399433399
+Author: Sneha Deb <sneha.deb@intel.com>
+Date:   Wed May 21 12:59:57 2025 +0530
+
+    Modify README.md for integration document (#8)
+    
+    * Modify README.md for integration document
+    
+    Signed-off-by: Sneha Deb <sneha.deb@intel.com>
+    
+    * Dummy commit
+    
+    ---------
+    
+    Signed-off-by: Sneha Deb <sneha.deb@intel.com>
+
+commit d39c367d5d90ba1ab3252e7b1bf600d7c0d6d8c4
+Author: Terry Duncan <terry.s.duncan@intel.com>
+Date:   Thu May 1 08:28:31 2025 -0700
+
+    Revert license collab (#9)
+    
+    * Revert "According LICENSE-collab.md to intel-collab policy"
+    
+    This reverts commit b04442141a5834115817c7dfe36933f16f342de6.
+    
+    * Revert "According README-collab.md to intel-collab policy"
+    
+    This reverts commit 57ef0808445b6bcc4461b5711b6fd99d045a9980.
+
+commit b04442141a5834115817c7dfe36933f16f342de6
+Author: sys-1sgithubsupport <sys_1sgithubsupport@intel.com>
+Date:   Fri Apr 25 04:57:09 2025 +0530
+
+    According LICENSE-collab.md to intel-collab policy
+
+commit 57ef0808445b6bcc4461b5711b6fd99d045a9980
+Author: sys-1sgithubsupport <sys_1sgithubsupport@intel.com>
+Date:   Fri Apr 25 04:57:09 2025 +0530
+
+    According README-collab.md to intel-collab policy
+
+commit a90768f5a93e0023d882b0d835463e5b2fceb2df
+Author: Jason M. Bills <jason.m.bills@intel.com>
+Date:   Wed Apr 23 08:02:59 2025 -0600
+
+    Update to C++23 (#7)
+    
+    Update to C++23 which is required for sdbusplus
+    
+    Signed-off-by: Jason M. Bills <jason.m.bills@intel.com>
+
+commit ee3f6094a8fd27828fe63aa32a3294665d8be6cf
+Author: Jason M. Bills <jasonm.bills@yahoo.com>
+Date:   Thu Feb 27 09:02:26 2025 -0700
+
+    Fix build issues with boost 1.87 (#6)
+    
+    Update deprecated terminology that was removed in boost 1.87.
+    
+    Signed-off-by: Jason M. Bills <jason.m.bills@intel.com>
+
+commit 9a17bfd66493d46d3828f67dd242a631219c797f
+Author: jmbills <jasonm.bills@yahoo.com>
+Date:   Thu Jun 29 09:52:58 2023 -0600
+
+    Use variable for service install location (#4)
+    
+    After enabling 'usrmerge', the install location for systemd service
+    files changed. This uses a variable to get the installation location
+    instead of hardcoding it.
+    
+    Tested:
+    Confirmed that with 'usrmerge' enabled, the service file is correctly
+    installed.
+    
+    Signed-off-by: Jason M. Bills <jason.m.bills@intel.com>
+
+commit f1b80712872992e97def5fc1966d4e0a383ef4ee
+Author: Jayaprakash Mutyala <mutyalax.jayaprakash@intel.com>
+Date:   Fri Jan 13 23:34:02 2023 +0530
+
+    Fix ASIO callback return values (#3)
+    
+    Align return values with documented conventions introduced in sdbusplus
+    commit ae47928b21e1aece18962a5b9254837dc5d692d6. The callback should
+    return true on success, and false on failure. This code was incorrectly
+    returning 0(false) when the property value was unchanged, causing
+    callers to receive an error.
+    
+    Tested:
+    Verified using ipmitool raw commands
+    Commands: ipmitool raw 0x30 0xb4 3 2  //Set security mode
+    Response:            //Success
+    
+    Signed-off-by: Jayaprakash Mutyala <mutyalax.jayaprakash@intel.com>
+
+commit 3434f220796f292458cb74be12149025aa0c4a61
+Author: Jonathan Doman <jonathan.doman@intel.com>
+Date:   Wed Jun 8 12:40:24 2022 -0700
+
+    Allow root to SSH with ValJumper even if already enabled (#2)
+    
+    If the root user was enabled at the time of jumper assertion, the
+    logic would consider the user already configured and not add the
+    priv-admin group membership. However, this leads to inconsistency and
+    confusion, so now `enableSpecialUser` will consider the password and
+    group separately when making changes. Now the expectations are:
+    
+    1. Root user can *always* SSH after asserting jumper (and setting
+       first password on console if needed).
+    2. Root user is disabled and removed from priv-admin upon jumper
+       de-assertion.
+    
+    Tested:
+    - Built EGP image without debug-tweaks so SSH server was disabled.
+    - Ran on Archer City and used gpio-mockup to simulate assertion of
+      FM_BMC_VAL_EN at boot.
+    - Verified features were enabled: could login, set password, and then
+      SSH. /var/val_jumper_assert_cleanup_required exists.
+    
+    - Rebooted and disabled gpio-mockup bootargs to simulate deassertion of
+      FM_BMC_VAL_EN.
+    - Verified features were disabled: could no longer login or SSH.
+    
+    - Set password via IPMI command, then rebooted and asserted jumper.
+      Confirmed that same password was accepted (didn't prompt to set new
+      one), but root was also added to priv-admin and could SSH.
+    
+    Signed-off-by: Jonathan Doman <jonathan.doman@intel.com>
+
+commit 7dc05af0adc32e0f16cd2e4f47956a6b2a470790
+Author: Jonathan Doman <jonathan.doman@intel.com>
+Date:   Fri Oct 15 18:14:11 2021 -0700
+
+    Enable root user and SSH server with val jumper
+    
+    When the validation jumper is set, we should also enable the root user
+    and the SSH server. In order to undo the effects when the jumper is
+    removed, drop a persistent file at
+    /var/val_jumper_assert_cleanup_required indicating that the user should
+    be disabled if the jumper is deasserted on a future boot.
+    
+    Tested:
+    - Built image without debug-tweaks so SSH server was disabled.
+    - Used gpio-mockup to simulate assertion of FM_BMC_VAL_EN at boot.
+    - Verified features were enabled: could login, set password, and then
+      SSH. /var/val_jumper_assert_cleanup_required exists.
+    
+    - Rebooted and disabled gpio-mockup bootargs to simulate deassertion of
+      FM_BMC_VAL_EN.
+    - Verified features were disabled: could no longer login or SSH.
+    
+    - Repeated above steps again to make sure jumper can be used repeatedly
+      with the same results.
+    
+    - Running `enable-ssh.sh` while jumper is asserted does *not* allow root
+      SSH access after jumper is deasserted, since priv-admin group is
+      removed from root. But SSH is potentially still usable by other users.
+    
+    - ValidationUnsecure mode without jumper assertion does not enable root
+      user or SSH server. Use IPMI command to enable special user, log in on
+      console to set property and then delete own account, reboot BMC and
+      observe no access possible.
+    
+    Change-Id: I81551edbdc569f8ca676eb189b91ddb7ff19dc06
+    Signed-off-by: Jonathan Doman <jonathan.doman@intel.com>
+
+commit 42a0ba3c61ae38cc84b06705159065860492fc2e
+Author: Jonathan Doman <jonathan.doman@intel.com>
+Date:   Fri Oct 15 16:41:39 2021 -0700
+
+    Fix improper password modification
+    
+    When the root user is configured for manufacturing mode, the password
+    hash was being modified via putspent() in a way that left /etc/shadow
+    with an invalid line containing "7:::". The proper way to use putspent()
+    seems to require writing out all shadow entries at once to avoid this.
+    After setting the password at first login, /etc/shadow gets rewritten
+    and the invalid entry is discarded, so this bug was possibly harmless.
+    
+    This commit replaces putspent() with a subprocess call to the passwd
+    utility, which is much more likely to avoid such bugs. The File class
+    was also not handling locking correctly, but now we can avoid dealing
+    with all of that.
+    
+    Tested:
+    - Build without debug-tweaks
+    - factory reset BMC and reboot into manufacturing mode.
+    - Able to login as root on console and set initial password
+    
+    Change-Id: Idb7cdc783ceea609a9054fad70f9efff7e1ee26b
+    Signed-off-by: Jonathan Doman <jonathan.doman@intel.com>
+
+commit f63a3721c947d022829a77058955bb751d2b3b8d
+Author: Jonathan Doman <jonathan.doman@intel.com>
+Date:   Thu Oct 7 09:08:39 2021 -0700
+
+    Refactor to use new logging API
+    
+    Upgrade C++ standard to C++20 and rewrite all logging calls to use the
+    new lg2 API. Fixes 1 malformatted phosphor::logging::entry.
+    
+    Tested: Entered validation unsecure mode and verified Redfish log was still
+    created with metadata entries.
+    
+    Change-Id: I4cfb21b5a685f087cf01f2f30f827bc81103a309
+    Signed-off-by: Jonathan Doman <jonathan.doman@intel.com>
+
+commit 22dd08f400653166012781f20973b84614da35aa
+Author: Arun P. Mohanan <arun.p.m@linux.intel.com>
+Date:   Wed Sep 29 18:25:03 2021 +0530
+
+    Add README
+    
+    Add README.md file
+    
+    Change-Id: Id2e2192e9fdcadf0b26590a423d73f2ed35508d7
+    Signed-off-by: Arun P. Mohanan <arun.p.m@linux.intel.com>
+
+commit 0ded319b96cf131530655b20a13a1f522b68c7d1
+Author: Michal Bielecki <michal.bielecki@intel.com>
+Date:   Wed Aug 25 16:48:08 2021 +0200
+
+    Validation hook jumper exposure as d-bus property.
+    
+    ValidationJumperMode property exposed over d-bus under
+    xyz.openbmc_project.Security.SpecialMode interface of special-mode-mgr
+    service.
+    
+    Tested:  Implementation has been validated on QEMU:
+    ValidationJumperMode property is always exposed. It's default state
+    is false.
+    If related GPIO is logical high:
+    - property state will be true
+    - SpecialMode property will be set to ValidationUnsecure
+    
+    Change-Id: Ia665ac123bedc78a0f4f8681621b62685ee5db94
+    Signed-off-by: Michal Bielecki <michal.bielecki@intel.com>
+
+commit 5f413eec673f3e6e5e754e2c55048abf0a146e5b
+Author: Arun P. Mohanan <arun.p.m@linux.intel.com>
+Date:   Fri Jul 2 13:07:57 2021 +0530
+
+    Add return statement in main
+    
+    Add return statement in main() to supress issue reported by static
+    code analysis tool.
+    
+    Signed-off-by: Arun P. Mohanan <arun.p.m@linux.intel.com>
+    Change-Id: Ie5235c8eddb616e62911e09388861b4df2ab170d
+
+commit 4f4f122790b999dc7db973a80727dbc1ca785e57
+Author: Sunita Kumari <sunitax.kumari@intel.com>
+Date:   Tue May 11 16:02:24 2021 +0000
+
+    Fix: add rsyslog dependency to specialmodemgr
+    
+    Issue: Manufacturing Mode events during BMC bootup were missed
+    in Redfish Event logs as rsyslog.service was not started by then.
+    Similar issue for PFR manager:
+    https://gerrit.openbmc-project.xyz/c/openbmc/pfr-manager/+/41644
+    
+    Tested: 1. Enable manufacturing mode by pressing power button while
+              bmc booting
+    
+     Events are logged in Redfish Event logs
+     Command GET:
+     https://<BMC_IP>/redfish/v1/Systems/system/LogServices/EventLog/Entries
+    Response:  {
+                "@odata.id": "/redfish/v1/Systems/system/LogServices/EventLog
+                  /Entries/1620726946",
+                "@odata.type": "#LogEntry.v1_4_0.LogEntry",
+                "Created": "2021-05-11T09:55:46+00:00",
+                "EntryType": "Event",
+                "Id": "1620726946",
+                "Message": "Entered Manufacturing Mode.",
+                "MessageArgs": [],
+                "MessageId": "OpenBMC.0.1.ManufacturingModeEntered",
+                "Name": "System Event Log Entry",
+                "Severity": "Critical"
+            },
+            {
+                "@odata.id": "/redfish/v1/Systems/system/LogServices/EventLog/
+                Entries/1620727827",
+                "@odata.type": "#LogEntry.v1_4_0.LogEntry",
+                "Created": "2021-05-11T10:10:27+00:00",
+                "EntryType": "Event",
+                "Id": "1620727827",
+                "Message": "Exited Manufacturing Mode.",
+                "MessageArgs": [],
+                "MessageId": "OpenBMC.0.1.ManufacturingModeExited",
+                "Name": "System Event Log Entry",
+                "Severity": "OK"
+            }
+    
+    Change-Id: I82b5771e6acc42bd78d6517d68e986e184f3eb85
+    Signed-off-by: Sunita Kumari <sunitax.kumari@intel.com>
+
+commit 885f4b2a155e55ccfc182ab02080c0ab31ee6a89
+Author: Jayaprakash Mutyala <mutyalax.jayaprakash@intel.com>
+Date:   Thu Mar 25 22:17:31 2021 +0000
+
+    Log RedFish events for Validation unsecure mode
+    
+    Support added to log events for Validation unsecure mode as
+    Manufacturing mode Entered/Exited, which can be viewed using Redfish
+    event log entries. Entering and Exiting validation unsecure mode should
+    be logged event in Redfish event log for security audits.
+    
+    Note: On each BMC reboot/reset validation unsecure mode event will be
+    logged as Manufacturing mode Entered in RedFish events if Validation
+    unsecure mode is enable.
+    
+    Tested:
+    1. Enable validation unsecure mode by using below command.
+    Command: ipmitool raw 0x30 0xb4 0x03 0x02
+    Response:             //success.
+    2. Verify using below command:
+    Command: busctl call "xyz.openbmc_project.SpecialMode"
+            /xyz/openbmc_project/security/special_mode
+            org.freedesktop.DBus.Properties Get ss
+            xyz.openbmc_project.Security.SpecialMode SpecialMode
+    Response: v s "xyz.openbmc_project.Control.Security.SpecialMode.Modes.
+              ValidationUnsecure"
+    3. RedFish event log will be as below
+    {
+        "@odata.id": "/redfish/v1/Systems/system/LogServices/EventLog/
+                      Entries/20031",
+        "@odata.type": "#LogEntry.v1_4_0.LogEntry",
+        "Created": "1970-01-01T05:33:51+00:00",
+        "EntryType": "Event",
+        "Id": "20031",
+        "Message": "Entered Manufacturing Mode.",
+        "MessageArgs": [],
+        "MessageId": "OpenBMC.0.1.ManufacturingModeEntered",
+        "Name": "System Event Log Entry",
+        "Severity": "Critical"
+    },
+    4. Exit validation unsecure mode by using below command.
+    Command: ipmitool raw 0x30 0xb4 0x03 0x00
+    Response:             //success.
+    5. RedFish event log will be as below
+    {
+        "@odata.id": "/redfish/v1/Systems/system/LogServices/EventLog/
+                      Entries/20062",
+        "@odata.type": "#LogEntry.v1_4_0.LogEntry",
+        "Created": "1970-01-01T05:34:22+00:00",
+        "EntryType": "Event",
+        "Id": "20062",
+        "Message": "Exited Manufacturing Mode.",
+        "MessageArgs": [],
+        "MessageId": "OpenBMC.0.1.ManufacturingModeExited",
+        "Name": "System Event Log Entry",
+        "Severity": "OK"
+    },
+    6. Special Test: Verified CRITICAL Redfish event is logged on AC-cycles
+       and BMC warm resets when validation-unsecure mode enable.
+    
+    Change-Id: Iac7b5a189fb08698e04f3838347e12b0b3a68cb4
+    Signed-off-by: Jayaprakash Mutyala <mutyalax.jayaprakash@intel.com>
+
+commit 32ea1e19df9e5179054d87617468664367dfab80
+Author: Jayaprakash Mutyala <mutyalax.jayaprakash@intel.com>
+Date:   Sat Feb 27 22:48:48 2021 +0000
+
+    Log RedFish events for Validation unsecure mode
+    
+    Support added to log events for Validation unsecure mode, which can
+    be viewed using Redfish event log entries.
+    This will indicate, whenever Validation unsecure mode is entered or
+    exited.
+    
+    Tested:
+    Verified same with up-stream message entry review
+    https://gerrit.openbmc-project.xyz/c/openbmc/bmcweb/+/40984
+    1. Redfish validator - passed for this new addition
+    2. Log will be as below (for both tampering and normalized)
+    {
+        "@odata.id": "/redfish/v1/Systems/system/LogServices/EventLog/
+                      Entries/1614647249",
+        "@odata.type": "#LogEntry.v1_4_0.LogEntry",
+        "Created": "2021-03-02T01:07:29+00:00",
+        "EntryType": "Event",
+        "Id": "1614647249",
+        "Message": "Entered Validation Unsecure Mode.",
+        "MessageArgs": [],
+        "MessageId": "OpenBMC.0.1.ValidationUnsecureModeEntered",
+        "Name": "System Event Log Entry",
+        "Severity": "Critical"
+    },
+    {
+        "@odata.id": "/redfish/v1/Systems/system/LogServices/EventLog/
+                      Entries/1614647310",
+        "@odata.type": "#LogEntry.v1_4_0.LogEntry",
+        "Created": "2021-03-02T01:08:30+00:00",
+        "EntryType": "Event",
+        "Id": "1614647310",
+        "Message": "Exited Validation Unsecure Mode.",
+        "MessageArgs": [],
+        "MessageId": "OpenBMC.0.1.ValidationUnsecureModeExited",
+        "Name": "System Event Log Entry",
+        "Severity": "OK"
+    }
+    
+    Change-Id: I73732d41f3510baf46d22b7fb98cbfd765f1c7ae
+    Signed-off-by: Jayaprakash Mutyala <mutyalax.jayaprakash@intel.com>
+
+commit 024531a11dbe2bd13f2f6e59bdb41a22fce8b431
+Author: Zhikui Ren <zhikui.ren@intel.com>
+Date:   Fri Sep 25 18:06:45 2020 -0700
+
+    Add missing includes to prepare for upstream sync
+    
+    Upstream removed broad boost include. Add missing headers to
+    fix build issues when sync with  upstream.
+    
+    Signed-off-by: Zhikui Ren <zhikui.ren@intel.com>
+    Change-Id: I9aadc4417beb1290d5feedf3763602d47fb2995c
+
+commit e9bcb94f78ec9dad22bc008e1abdb18f16f39a40
+Author: Vernon Mauery <vernon.mauery@linux.intel.com>
+Date:   Wed Jul 15 10:08:14 2020 -0700
+
+    Use a valid D-Bus interface name
+    
+    D-Bus interfaces require a dotted name with at least two parts, with the
+    recommended name reverse FQDN style. Without this change, the special
+    mode manager was constantly aborting because of the invalid name (with
+    the latest sdbusplus changes)
+    
+    Tested: The special mode manager is back up and running and can interact
+            with other entities on the bus.
+    
+    Change-Id: Ief33873f95565fd7093aa98f118e3b79e73241d6
+    Signed-off-by: Vernon Mauery <vernon.mauery@linux.intel.com>
+
+commit 658d313be17b971aedae69e9edbba5f26667dd03
+Author: Jae Hyun Yoo <jae.hyun.yoo@intel.com>
+Date:   Mon Jun 15 21:52:53 2020 -0700
+
+    Refine special mode entering condition check
+    
+    AST2600 generates a different pattern of reset reason but AC boot
+    flag is same to AST2500 as bit[0] flag. To support both of them,
+    this commit refines the cmdline boot arguments parsing logic.
+    
+    Tested: Entered to special mode when cmdline has
+    'special=mfg' and ('resetreason=0x11' or 'resetreason=0xff31')
+    
+    Change-Id: Idc19b937e2b203f8f825495b62ab518f1075eb9d
+    Signed-off-by: Jae Hyun Yoo <jae.hyun.yoo@intel.com>
+
+commit cf2ba04cf68d76047211f66d9bb4ae1be1907323
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Wed Feb 5 20:56:53 2020 +0530
+
+    [Mfg-mode]: Configure root user with null passwd
+    
+    Configure special user with null password when entering manufacturing
+    mode and special user password is in disabled state.
+    
+    Note: This feature is under VALIDATION_UNSECURE flag, and hence
+    will be available for reference only image.
+    
+    Tested:
+    1. Built the image without debug-tweaks and flashed the same
+    2. Confirmed that root user is not enabled during regular boot
+    3. Pressed power button for 15 seconds during AC Cycle, and
+    entered manufacturing mode
+    4. Able to login to root user with no password and
+    updated the password to new one, due to enforcement
+    5. Verified upon rebooting, the newly configured password can be
+    used to login to the serial console.
+    6. Entered Manufacturing mode again, to make sure root user
+    password is not set to null again as it is already configured.
+    
+    Change-Id: I6aab8713a7c4d7d75b63b1b58ee063b09d9db990
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit 1e45f603909ce584c61e27b8ee342d056ef7ea72
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Thu Jan 30 22:11:20 2020 +0530
+
+    Configure special user, if not set and in mfg mode
+    
+    Configure special user with default passwod 0penBmc1, when
+    the root user is not set with any password, and mark the
+    password as expired, so that it will be forced to update on
+    first login. This method can be used when Host interface is
+    not available and we still need to enable root user.
+    
+    Note: This feature is under VALIDATION_UNSECURE flag, and hence
+    will be available for reference only image.
+    
+    Tested:
+    1. Built the image without debug-tweaks and flashed the same
+    2. Confirmed that root user is not enabled during regular boot
+    3. Pressed power button for 15 seconds during AC Cycle, and
+    entered manufacturing mode
+    4. Able to login to root user with password "0penBmc1" and
+    updated the password to the new one, due to force password update
+    5. Verified upon rebooting, the newly configured password can be
+    used to login to the serial console
+    
+    Change-Id: I53e68ebbe24110a116816a29fe1bf5b3142b8bc2
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit b27aeefb10c604bae59d8f0ced06e5cb13ee4185
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Tue Dec 17 13:45:25 2019 +0530
+
+    Fix: Ignore Timer when in validation unsecure
+    
+    Ignore timer handler, when we are in validation unsecure
+    mode, and reside in validation unsecure mode itself.
+    i.e. Validation unsecure must be persistent and must not be
+    reseted based on a timer, which will get activated when we
+    execute manufacturing command.
+    
+    Tested:
+    1. Verfied the Get Security mode command, ipmitool raw 0x30 0xB3
+    and saw no changes in validation unsecure mode after mfg command
+    execution, and after 15 minutes timeout.
+    
+    Change-Id: Ifb338e13bf3f0a923bc488284cced8448043a2e5
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit a3e7cb05c579808442f93accab2ab99aff82cb85
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Mon Nov 11 11:48:09 2019 +0530
+
+    Update special mode mgr as per D-Bus interface
+    
+    Updated special-mode-mgr service to expose the property as
+    per the D-Bus interface SpecialMode in the community
+    
+    Tested
+    1. Verified that manufacturing mode entered as per 15 second power
+    buttong press during AC cycle
+    2. Verified that expired based on timeout or restriction mode property
+    change
+    3. Verified validation unsecure features works as expected
+    
+    Change-Id: I87b67424f657a1a19545b4dc18a80a2fddf8ee44
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit 69dc3d8a5c70149e912b52a584187c7a7457fa37
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Mon Nov 4 15:19:35 2019 +0530
+
+    Added support for validation unsecure mode
+    
+    Support added for validation unsecure mode under compile flag
+    which will be enabled only with debug-tweaks. Default is disabled.
+    
+    Tested:
+    Along with intel-ipmi-oem changes for set security mode command
+    1. Verified that system goes to validation unsecure mode
+    as per the Set Security Mode command.
+    2. Able to execute all the manufacturing mode command in this state
+    3. Mode preserved during reboot and not in reset to defaults
+    
+    Change-Id: Ice33d2c02ac8c0c0276ba16651f8acbd3d5b8cd4
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit 61c567d773a662a652e1df2b64314a46eac77d4d
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Mon Sep 30 12:09:49 2019 +0530
+
+    special-mode-mgr: Log events for mfg mode change
+    
+    Support added to log events for mfg mode, which can
+    be viewed using Redfish event log entries.
+    This will indicate, whenever manufacturing mode
+    is entered or exited.
+    
+    Tested:
+    Tested the same with up-stream message entry review
+    https://gerrit.openbmc-project.xyz/#/c/openbmc/bmcweb/+/25687/
+    1. Redfish validator - passed for this new addition
+    2. Log will be as below (for both tampering and normalized)
+    {
+        "@odata.context": "/redfish/v1/$metadata#LogEntry.LogEntry",
+        "@odata.id": "/redfish/v1/Systems/system/LogServices/EventLog/Entries/317",
+        "@odata.type": "#LogEntry.v1_4_0.LogEntry",
+        "Created": "1970-01-01T00:05:17+00:00",
+        "EntryType": "Event",
+        "Id": "317",
+        "Message": "Entered Manufacturing Mode",
+        "MessageArgs": [],
+        "MessageId": "OpenBMC.0.1.ManufacturingModeEntered",
+        "Name": "System Event Log Entry",
+        "Severity": "Critical"
+    },
+    {
+        "@odata.context": "/redfish/v1/$metadata#LogEntry.LogEntry",
+        "@odata.id": "/redfish/v1/Systems/system/LogServices/EventLog/Entries/899",
+        "@odata.type": "#LogEntry.v1_4_0.LogEntry",
+        "Created": "1970-01-01T00:14:59+00:00",
+        "EntryType": "Event",
+        "Id": "899",
+        "Message": "Exited Manufacturing Mode",
+        "MessageArgs": [],
+        "MessageId": "OpenBMC.0.1.ManufacturingModeExited",
+        "Name": "System Event Log Entry",
+        "Severity": "OK"
+    }
+    
+    Change-Id: I417e5bd2e179592e1be0083eeb8759e348554bff
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit 56820112309b48227715c2ea99f2811d7369a1dc
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Fri Aug 2 11:01:32 2019 +0530
+
+    Fix: Special mode mgr path.
+    
+    Special mode mgr was using lowerCamelCase for it's path
+    which is not used as per our standard, hence converted
+    the same with '_' usage. special_mode is the new suffixed
+    path now.
+    
+    Tested:
+    1. Verified by executing manufacturing mode comamnd
+    by entering to manufacturing mode.
+    
+    Change-Id: I837296b20f93ee76440bf31d29d0391557cf956f
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit d5a63c21f938e3378b33e8e28e35b243cd944fd7
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Fri Aug 2 10:24:11 2019 +0530
+
+    [mfg]: Manufacutring timeout & timer reset update
+    
+    As per the manufacturing EAS document 0.7, updated timeout
+    for manufacturing mode from 12 hours to 15 minutes. Added
+    support for ResetTimer method, which will be used by all
+    manufacturing commands to extend the timer for next 15 minutes.
+    
+    Tested:
+    1. Entered manufacturing mode, and verified that mode
+    expires after 15 minutes of power on
+    2. Entered manufacturing mode, executed ResetTimer()
+    method and verified timer got expired and BMC was in
+    manufacturing mode itself.
+    
+    Change-Id: Ieb785b4a59d914548909d422415584ccd94c6ccc
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit 0b3e909241c24e204790ec39e6045ed2eb59036d
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Wed Jul 24 00:20:43 2019 +0530
+
+    Rely on IntfAdded signal for special-mode-mgr
+    
+    Update special mode manager daemon to rely on InterfacesAdded
+    signal too from RestrictionMode daemon, instead of using
+    mapper-wait alone. In this way, the value will always be updated
+    correctly, and can get rid of mapper-wait.
+    
+    Tested:
+    1. Verified that special mode mgr is started as expected
+    2. Verified special mode mgr, reflect manufaturing mode as
+    expected when pressed power button for 8 seconds, during AC cycle
+    3. Verified special mode mgr value gets expired when provisioning
+    mode is updated to any value other than provisioning.
+    
+    Change-Id: I1ae8a1f0a274019970986c6321c2807b9a08d545
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit 51df5bfd26114284a857196710f16aec30f997a3
+Author: Ayushi Smriti <smriti.ayushi@intel.com>
+Date:   Thu Jul 4 15:38:10 2019 +0000
+
+    Fix: special mode mgr to monitor RestrictionMode property
+    
+    special mode mgr should rollback the state once RestrictionMode
+    property is updated to value other than provisioning.
+    
+    Tested:
+    Verified setting the restriction mode property to a value
+    other than provisioning.
+    Special mode value is set to manufacturing expired.
+    
+    Change-Id: I32f810196e25fe2e3955eb16939caa2fb8611f86
+    Signed-off-by: Ayushi Smriti <smriti.ayushi@intel.com>
+
+commit 063e1be0464b08533959f804dc8db109edec232c
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Sat Jun 29 21:44:41 2019 +0530
+
+    Fix: Remove PFail query & enable special-mode-mgr
+    
+    1. AC failure bit is read from command line parameter, and hence
+    the old code which reads it from PFail property is not
+    applicable anymore and removed.
+    2. Enabled special mode manager service.
+    
+    Tested:
+    1. Made sure after boot special-mode-mgr service is working
+    fine without crashing
+    2. Able to reflect the special-mode-mgr mode properties
+    as expected
+    
+    Change-Id: I0a369bf4db63fa3cb22650a457f5dc6bd4300823
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit 67cc0298cbe9cc3aaa88425a4ee102870455668c
+Author: Jason M. Bills <jason.m.bills@linux.intel.com>
+Date:   Fri Jun 7 13:36:37 2019 -0700
+
+    Get AC boot status directly from the command line
+    
+    Instead of reading PFail as a DBus property, this change gets the
+    AC boot status directly from the resetreason parameter on the
+    command line.
+    
+    Change-Id: I1f8225c334e0c48c4b4feb1116f8fecd0fb3e49d
+    Signed-off-by: Jason M. Bills <jason.m.bills@linux.intel.com>
+
+commit b512c10113e50eaf655edfe5a8e50f65fff43cb5
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Thu Jun 20 22:30:23 2019 +0530
+
+    [special-mode-mgr]: Fix the service name typo
+    
+    Updated the typo in service name of special mode manager.
+    
+    Tested:
+    1. Verified that it loads with proper service name without
+    typo.
+    
+    Change-Id: If8eb03ffd66a505389834a0f773b52bfd73956c2
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit 1bc8f5f0ad9448dd83486e00fe80a0c81c2fd020
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Wed Jun 12 21:59:32 2019 +0530
+
+    special-mode-mgr:Disable the service - PFail crash
+    
+    Due to recent changes in Power related properties, PFail
+    property has been removed, which was causing special
+    mode mgr to crash. Disable the service till, the review
+    to fix the PFail is merged.
+    
+    Tested:
+    Verified that special-mode-mgr service is not started
+    
+    Change-Id: I9c9744ad37aec6eb83cacfab335b0e772e6d4143
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit ff86a554dad78738a4a9aeafcfd8928f8e2984e8
+Author: James Feist <james.feist@linux.intel.com>
+Date:   Fri Jun 7 14:31:18 2019 -0700
+
+    Remove non-existant mapper wait
+    
+    Power control no longer has these interfaces.
+    
+    Tested: No longer waits
+    
+    Change-Id: I314a6011a528b411a1032c8385b15228f3402666
+    Signed-off-by: James Feist <james.feist@linux.intel.com>
+
+commit 1bd2ea770e2d71f66e2f268913a300527445179c
+Author: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+Date:   Mon Apr 29 23:30:10 2019 +0530
+
+    Add special mode manager for manufacturing mode
+    
+    Daemon to detect and expose the manufacturing mode is
+    implemented. Applications like IPMI will use this to
+    determine, whether manufacturing commands can be executed or
+    not.
+    
+    Tested:
+    Note: As this daemon can't be used by user, tested it using busctl
+    1. Verified that busctl introspect exposes the SpecialMode
+    property correctly based on 1. u-boot power button press during
+    AC cycle, 2. Provisioning mode 3. PFail 4. uptime < 12hours
+    2. Verified timeout happens and updates the specialMode
+    property value to 0.
+    
+    Change-Id: I61cd824202ca7996d0993d8c9fa1d66812c6a5ef
+    Signed-off-by: Richard Marian Thomaiyar <richard.marian.thomaiyar@linux.intel.com>
+
+commit 3cedc1bd5e0cd2e8ce8c9fad1c86fa9ff4dfedf3
+Author: SCM Administrator <NoEmailShouldEverBeSentToSCMAdmin>
+Date:   Thu Mar 26 15:40:57 2020 -0700
+
+    Initial empty repository
