@@ -16,16 +16,17 @@
 
 #include "specialmodemgr.hpp"
 
-#include <filesystem>
-#include <sys/sysinfo.h>
-#include <gpiod.hpp>
 #include <grp.h>
-
 #include <shadow.h>
+#include <sys/sysinfo.h>
+
+#include <boost/process/v1/child.hpp>
+#include <gpiod.hpp>
+#include <phosphor-logging/lg2.hpp>
+
+#include <filesystem>
 #include <fstream>
 #include <string>
-#include <phosphor-logging/lg2.hpp>
-#include <boost/process/v1/child.hpp>
 
 using std::operator""s;
 
@@ -163,8 +164,8 @@ static bool enableSpecialUser(bool enable)
     return true;
 }
 
-static void
-    startSSHServer(const std::shared_ptr<sdbusplus::asio::connection>& conn)
+static void startSSHServer(
+    const std::shared_ptr<sdbusplus::asio::connection>& conn)
 {
     auto startUnit = conn->new_method_call(
         "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
@@ -186,8 +187,7 @@ static void
 SpecialModeMgr::SpecialModeMgr(
     boost::asio::io_context& io_, sdbusplus::asio::object_server& srv_,
     std::shared_ptr<sdbusplus::asio::connection>& conn_) :
-    io(io_),
-    server(srv_), conn(conn_),
+    io(io_), server(srv_), conn(conn_),
     timer(std::make_unique<boost::asio::steady_timer>(io)),
     specialMode(secCtrl::SpecialMode::Modes::None)
 {
